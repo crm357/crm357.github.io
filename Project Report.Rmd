@@ -1,0 +1,183 @@
+---
+title: "Week 8 Project Report"
+author: "Anonymous"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, digits = 2)
+```
+
+### A Summary
+
+We explore the Weight Lifting Exercise Dataset to find the best linear regression model to perform 
+predictions.  We will review the raw data, make any necessary adjustments, find the best from a set 
+models, and show why the chosen model is the best.
+
+#### Load and Review the data
+
+```{r}
+train <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+                  header = TRUE, 
+                  stringsAsFactors = FALSE)
+test <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                  header = TRUE, 
+                  stringsAsFactors = FALSE)
+``` 
+
+As always we must examine the raw data to gauge what we're dealing with.
+```{r}
+names(train)
+names(test)
+```
+
+Has anyone noticed that column 160 of train is "classe" but column 160 of test is "problem_id": 
+there is no 'classe' in the test data!  Can the predict() function handle this?  This never came up in class.
+
+```{r}
+unique(train$classe)
+unique(test$problem_id)
+```
+
+No, they're not the same data under different column names -- they are completely different data! 
+So how do you predict 'classe' with a test set that doesn't have 'classe'?  Easy Peasy.  We replace 
+the  original 'test' with one of our own drawn from the train dataset that will then contain  'classe' in both train and test.  
+
+To stay within the original structure of the project source data, we create a (new) 'test' with a 
+random sample of 20 observations from 'train' and transfer those to a new 'test'.  
+```{r}
+set.seed(313)   # for reproducibility
+S <- sample(nrow(train),size = 20)   # a random sample of 20 rows from the original training set
+test  <- train[S,]    # a new 'test' with the 20 random observations
+train <- train[-S,]   # and a transfer of these 20 observations removes them from the training set
+```
+
+
+
+#### Determine the Appropriate Predictors
+
+From the project instructions:  
+"_your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways._".  
+
+In accordance with these instructions, we isolate only those variables related to accelerometers.
+```{r}
+foo   <- grep("accel", names(train), value = TRUE)
+train <- train[,c("classe",foo)]
+test  <- test[,c("classe",foo)]
+# we want train and test to be identically structured.
+```
+
+**At this point in this study, I ask the reader to pause and review the Appendix. There is no codebook 
+and this dataset could sorely use it.  A good model may only need the columns that begin with 
+"total_accel_" in lieu of the x/y/z break outs. But without a good codebook to guide us, we spin the 
+wheel and hope for the best.** 
+
+```{r}
+# there's some NA's in certain columns: are these columns only NA?
+sum(!is.na(train$var_total_accel_belt))
+sum(!is.na(train$var_accel_arm))
+sum(!is.na(train$var_accel_dumbbell))
+sum(!is.na(train$var_accel_forearm))
+# The "var_" columns each have 405 non-NA's out of 19,602 observations.
+sum(is.na(train$var_accel_forearm)) / nrow(train) * 100.0
+```
+
+Almost 98% of the 'var_' columns have no values. This is not considered  useful for accurate analysis.  We remove these 'var_' columns.
+```{r}
+train <- train[,grep("var_", names(train), invert = TRUE)]
+test  <- test[,grep("var_", names(test), invert = TRUE)]
+```
+
+At this point, we should now have what we can consider tidy data.
+```{r}
+names(train); names(test)
+```
+
+
+#### Run Selected Models and Determine Their Acccuracy
+
+We will grind out four different models and compare them. Because the run times are so long these 
+'train' runs are not executed as an R code chunk, but are documented here.
+
+```{r eval=FALSE}
+partMod   <- train(classe ~ ., method="rpart", data=train)
+forestMod <- train(classe ~ ., method="rf", data=train)
+boostMod  <- train(classe ~ ., method="gbm", data=train, verbose=FALSE)
+ldaMod    <- train(classe ~ ., method="lda", data=train)
+```
+
+* partMod has an Accuracy of 0.439 with an out-of-sample error of 1 - 0.439 = 0.561
+* forestMod has an Accuracy of 0.945 with an out-of-sample error of 1 - 0.945 = 0.055
+* boostMod has an Accuracy of 0.818 with an out-of-sample error of 1 - 0.818 = 0.182
+* ldaMod has an Accuracy of 0.514 with an out-of-sample error of 1 - 0.514 = 0.486
+
+By far the random forest model has the best accuracy, followed by Stochastic Gradient Boosting.  
+
+In the interest of saving space, we summarize the results of these commands.    
+
+```{r eval=FALSE}
+cor(train[,-1])  
+# A correlation matrix of the acceleration variables show weak sign of correlation. 
+# This isn't too surprising as these measurements are essentially independent of each other.
+```
+
+We move forward to do predictions against our test data. We will use our two best performing models.  
+```{r eval=FALSE}
+forestPred <- predict(forestMod, test)  
+boostPred  <- predict(boostMod, test)
+
+# And then review the confusion matrix for our two prediction models.  
+confusionMatrix(as.factor(test$classe), forestPred)  
+confusionMatrix(as.factor(test$classe), boostPred)
+```
+
+The matrix for forestPred shows an Accuracy of 1 with a Kappa of 1.  
+The matrix for boostPred shows an Accuracy of 0.8 with a Kappa of 0.737.  
+
+Finally, we run a combination model using our two best performing models to see if this further 
+improves accuracy.  
+```{r eval=FALSE}
+predDF <- data.frame(forestPred, boostPred, classe=test$classe)
+comboMod <- caret::train(classe ~ ., method="rf", data=predDF)
+comboPred <- stats::predict(comboMod,predDF)
+confusionMatrix(as.factor(test$classe), comboPred)
+```
+
+Somewhat predictable, the matrix for comboPred shows an Accuracy of 1 with a Kappa of 1. 
+This is the same results as using the random forest predictor alone. 
+
+
+
+#### Conclusion
+
+Based on its Accuracy and its out-of-sample error level, it is deemed the random forest model 
+the best predictor of the test data.  
+
+
+### APPENDIX
+
+
+One thing that everyone needs to bear in mind regarding the Johns Hopkins Data Science courses is 
+that they're getting "long in the tooth"; i.e. the course material is old. This author has run 
+into problems with both quizzes and course projects where ambiguities exist and Internet references 
+are no longer there.
+
+This is the case here.
+
+We have two separate issues with this assignment. 
+The URL http://groupware.les.inf.puc-rio.br/har is no longer reachable; multiple browsers were 
+unable to resolve this URL. 
+Further investigation has found that http://puc-rio.br/ reaches the home page of a university in Brazil. 
+The page is in Portuguese but Google Translate in Firefox re-renders it in English. 
+Surfing through it's various pages failed to uncover the "Weight Lifting Exercise" data source.  
+
+The second issue, already noted in the report, is that the structure of the training dataset is 
+incompatible with the test dataset. The training set contains the variable "classe" that is the 
+target of our predictions, whereas the test set we are to use contains no such variable.  
+
+Is this deliberate?  Or did the datasets for this project change since this project was developed?  
+
+I'm done.  I shall approach this assignment differently than the instructions call for. In my grading
+of your submission I will give wide latitude of your approach.
+
