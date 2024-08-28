@@ -1,10 +1,14 @@
-### Please Read
+### PLEASE READ
+
+
+*To view my Coursde 8 Project HTML report here at GitHub, please click on the following link:*
+
+https://htmlpreview.github.io/?https://github.com/crm357/crm357.github.io/blob/gh-pages/Project-Report.html
+
+
 
 
 #### Issue 1
-
-
-To read my finished HTML project report, please continue reading this README.
 
 
 From the project instructions:
@@ -14,14 +18,8 @@ From the project instructions:
 
 As I've learned through my years in development, to get at the correct answer one must go down the rabbit hole. That rabbit hole is _stackover.com_.  Neither the course instructions nor even ChatGPT knew how to get an .html file to render at GitHub.  Stackoverflow went straight to the correct answer:
 
-"_The most comfortable way to preview HTML files on GitHub is to go to https://htmlpreview.github.io/ or just prepend it to the original URL, i.e.: https://htmlpreview.github.io/?https://github.com/bartaz/impress.js/blob/master/index.html_"
+"_The most comfortable way to preview HTML files on GitHub is to go to https://htmlpreview.github.io/ or just prepend it to the original URL, i.e.: https://htmlpreview.github.io/?https://github.com/bartaz/impress.js/blob/master/index.html_".  
 
-
-*To view my Coursde 8 Project HTML report here at GitHub, please click on the following link:*
-
-https://htmlpreview.github.io/?https://github.com/crm357/crm357.github.io/blob/gh-pages/Project-Report.html
-
-This is what a reference to a renderable HTML file must look like at GitHub to actually read the HTML
 
 
 
